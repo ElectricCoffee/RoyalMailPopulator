@@ -18,10 +18,8 @@ object PdfProcessor {
     fun run(watchDir: String?, viewerExec: String?) {
         // Get string from args if set
 
-        var watchDir = watchDir
-        var viewerExec = viewerExec
-        watchDir = watchDir ?: "E:\\Downloads"
-        viewerExec = viewerExec ?: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        val watchDir = watchDir ?: "E:\\Downloads"
+        val viewerExec = viewerExec ?: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
 
         // Create watch service to monitor download folder
         val watchService = FileSystems.getDefault().newWatchService()
@@ -43,19 +41,56 @@ object PdfProcessor {
             val key = watchService.take()
 
             for (event in key.pollEvents()) {
-                if (event.kind() === StandardWatchEventKinds.ENTRY_CREATE && event.context().toString()
+                if (event.kind() !== StandardWatchEventKinds.ENTRY_CREATE || !event.context().toString()
                         .endsWith(".pdf")
                 ) {
-                    println("Processing event kind : " + event.kind() + " - File : " + event.context())
-
-                    //bingo we have a pdf try and process it
-                    processPDF(watchDir + "\\" + event.context(), viewerExec)
-                } else {
-                    println("Ignoring event kind : " + event.kind() + " - File : " + event.context())
+                    println("Ignoring event kind : ${ event.kind() } - File : ${ event.context() }")
+                    break
                 }
+
+                println("Processing event kind : ${event.kind()} - File : ${event.context()}")
+
+                //bingo we have a pdf try and process it
+                processPDF("$watchDir\\${event.context()}", viewerExec)
             }
             poll = key.reset()
         }
+    }
+
+    /**
+     * Opens a PDF and strips out the individual lines of text
+     */
+    fun stripLines(fileName: String): Array<String> {
+        // using openPdf will load the pdf that is hopefully a Royal Mail shipping label.
+        val docLoad = PDDocument.load(File(fileName))
+        val text = PDFTextStripper().getText(docLoad)
+
+        //will loop though the text hoping to find the text 'Postage Paid GB'
+        return text.split("\r\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+    }
+
+    /**
+     * Locates the relevant part of the PDF and generates an output string
+     */
+    fun genOutput(lines: Array<String>): String {
+        var output = ""
+        for (i in lines.indices) {
+            if (!lines[i].contains("Postage Paid GB")) {
+                continue
+            }
+
+            // found postage page text, will now get the name , address and tracking number
+            System.out.printf("Processing [%s]", lines[i + 4])
+
+            // TODO: fix this mess
+            val name = lines[i + 4]
+            val address = lines[i + 5] + " " + lines[i + 6] + " " + lines[i + 7] + " " + lines[i + 8] + " " + lines[i + 9]
+            val trackingNo = lines[i - 2] + " " + lines[i + 3].replace(" ", "").replace("-", "")
+
+            output += "$name¬$address¬$trackingNo" + System.lineSeparator()
+        }
+
+        return output
     }
 
     /**
@@ -68,32 +103,10 @@ object PdfProcessor {
     fun processPDF(filename: String, viewerExec: String) {
         try {
             println("Attempting to process $filename")
-            println("Working folder " + System.getProperty("user.dir"))
+            println("Working folder ${System.getProperty("user.dir")}")
 
-            // using openPdf will load the pdf that is hopefully a Royal Mail shipping label.
-            val docLoad = PDDocument.load(File(filename))
-            val text = PDFTextStripper().getText(docLoad)
-
-
-            var output = ""
-
-            //will loop though the text hoping to find the text 'Postage Paid GB'
-            val lines = text.split("\r\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-
-            for (i in 0..(lines.size - 1)) {
-                if (!lines[i].contains("Postage Paid GB")) {
-                    continue
-                }
-
-                // found postage page text, will now get the name , address and tracking number
-                System.out.printf("Processing [%s]", lines[i + 4])
-
-                output = output +
-                        lines[i + 4] + "¬" +
-                        lines[i + 5] + " " + lines[i + 6] + " " + lines[i + 7] + " " + lines[i + 8] + " " + lines[i + 9] + "¬" +
-                        lines[i - 2] + " " + lines[i + 3].replace(" ", "").replace("-", "") + System.lineSeparator()
-
-            }
+            val lines = stripLines(filename)
+            val output = genOutput(lines)
 
             // output file is empty to will end early as there is nothing to add to proof of postage
             if (output.isEmpty()) {
@@ -107,6 +120,7 @@ object PdfProcessor {
             // postage pdf a number of times as it will only hold 30 items
             val outputs = output.split(System.lineSeparator().toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
             var p = 0
+
             while (p <= outputs.size - 1) {
                 // Load Royal Mail proof of postage pdf ready to repopulate!
                 val file = File(System.getProperty("user.dir") + "\\Royal Mail Proof Of Postage.pdf")
@@ -115,41 +129,44 @@ object PdfProcessor {
                 val acroForm = docCatalog.acroForm
 
                 // populate the forms from the pdf text stored in the outputs string array
-                var countForNumberofItems = 0
-                for (i in p..(outputs.size - 1)) {
+                var countForNumberOfItems = 0
+                for (i in p..<outputs.size) {
                     if (i > p + 29) {
                         println("Over 30 items exiting early!")
                         break
                     }
 
-                    val line = outputs[i].split("¬".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+                    val (name, address, service) = outputs[i].split("¬".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
 
-                    if ((i - p) == 0) {
-                        acroForm.getField("1").setValue(line[0])
-                        acroForm.getField("my text here").setValue(line[1])
-                        acroForm.getField("service used 1").setValue(line[2])
-                    } else {
-                        acroForm.getField("" + ((i - p) + 1)).setValue(line[0])
-                        acroForm.getField("address and postcode " + ((i - p) + 1)).setValue(line[1])
-                        acroForm.getField("service used " + ((i - p) + 1)).setValue(line[2])
+                    acroForm.run {
+                        if ((i - p) == 0) {
+                            getField("1").setValue(name)
+                            getField("my text here").setValue(address)
+                            getField("service used 1").setValue(service)
+                        } else {
+                            getField("" + ((i - p) + 1)).setValue(name)
+                            getField("address and postcode " + ((i - p) + 1)).setValue(address)
+                            getField("service used " + ((i - p) + 1)).setValue(service)
+                        }
                     }
 
-                    println("Content added [" + line[0] + "," + line[1] + "," + line[2] + "]")
-                    countForNumberofItems++
+                    println("Content added [$name,$address,$service]")
+                    countForNumberOfItems++
                 }
 
                 // add date and number of items
-                acroForm.getField("Text57").setValue("$countForNumberofItems items")
+                acroForm.getField("Text57").setValue("$countForNumberOfItems items")
                 acroForm.getField("Text58").setValue(SimpleDateFormat("dd/MM/yyyy").format(Date()))
 
                 // Save populated pdf file with unique guid filename
                 val uniqueFilename = UUID.randomUUID().toString() + ".pdf"
-                pdfTemplate.save(System.getProperty("user.dir") + "\\" + uniqueFilename)
+                val path = "${System.getProperty("user.dir")}\\$uniqueFilename"
+                pdfTemplate.save(path)
                 pdfTemplate.close()
 
                 //open file in chrome
-                println("Opening pdf with exec [" + viewerExec + " " + System.getProperty("user.dir") + "\\" + uniqueFilename + "]")
-                Runtime.getRuntime().exec(viewerExec + " " + System.getProperty("user.dir") + "\\" + uniqueFilename)
+                println("Opening pdf with exec [$viewerExec $path]")
+                Runtime.getRuntime().exec("$viewerExec $path")
 
                 p += 30
             }
