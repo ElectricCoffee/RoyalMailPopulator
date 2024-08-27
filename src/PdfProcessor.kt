@@ -69,25 +69,71 @@ object PdfProcessor {
         return text.split("\r\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
     }
 
+    enum class FetchMode {
+        None, Name, Address, Service
+    }
+
     /**
      * Locates the relevant part of the PDF and generates an output string
      */
-    fun genOutput(lines: Array<String>): String {
-        var output = ""
-        for (i in lines.indices) {
-            if (!lines[i].contains("Postage Paid GB")) {
+    fun genOutput(lines: Array<String>): Vector<UserData> {
+        val output = Vector<UserData>()
+        var isCert = false
+        var fetchMode = FetchMode.None
+
+        val names = Vector<String>()
+        val addresses = Vector<String>()
+        var addressBuffer = Vector<String>()
+        val services = Vector<String>()
+
+        for (line in lines) {
+            if (line.contains("Certificate of Posting for Online Postage")) {
+                isCert = true
+            }
+
+            if (!isCert) {
+                continue;
+            }
+
+            if (fetchMode == FetchMode.None && line.contains("Name & Address")) {
+                fetchMode = FetchMode.Name
                 continue
             }
 
-            // found postage page text, will now get the name , address and tracking number
-            System.out.printf("Processing [%s]", lines[i + 4])
+            if (fetchMode == FetchMode.Name) {
+                println("Processing [$line]")
+                names.add(line)
+                fetchMode = FetchMode.Address
+                continue
+            }
 
-            // TODO: fix this mess
-            val name = lines[i + 4]
-            val address = lines[i + 5] + " " + lines[i + 6] + " " + lines[i + 7] + " " + lines[i + 8] + " " + lines[i + 9]
-            val trackingNo = lines[i - 2] + " " + lines[i + 3].replace(" ", "").replace("-", "")
+            if (fetchMode == FetchMode.Address && line.contains("Service Used")) {
+                fetchMode = FetchMode.Service
+                continue
+            }
 
-            output += "$name¬$address¬$trackingNo" + System.lineSeparator()
+            if (fetchMode == FetchMode.Address) {
+                // do stuff
+                addressBuffer.add(line)
+                continue
+            }
+
+            if (fetchMode == FetchMode.Service) {
+                addresses.add(addressBuffer.joinToString(", "))
+                addressBuffer = Vector()
+                isCert = false
+                fetchMode = FetchMode.None
+                services.add(line)
+                continue
+            }
+        }
+
+        if (names.count() != addresses.count() || addresses.count() != services.count()) {
+            throw IOException("The fields aren't the same length...")
+        }
+
+        for (i in names.indices) {
+            output.add(UserData(names[i], addresses[i], services[i]))
         }
 
         return output
@@ -118,7 +164,7 @@ object PdfProcessor {
 
             // If there is over 30 items it will loop thought creating the proof of
             // postage pdf a number of times as it will only hold 30 items
-            val outputs = output.split(System.lineSeparator().toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            val outputs = output.map { it.toLegacyString() }
             var p = 0
 
             while (p <= outputs.size - 1) {
