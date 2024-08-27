@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -17,18 +18,29 @@ public class PdfProcessorWindow extends JFrame {
         setSize(600, 400);
         setLocationRelativeTo(null);
 
+        DefaultTableModel dtm = new DefaultTableModel(null, new Object[]{"Name", "Address & Postcode", "Service"});
+        pdfTable.setModel(dtm);
+
         exportBtn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
 
             }
         });
-    }
+        removeBtn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
 
-    private void createUIComponents() {
-        String[][] data = {};
-        String[] header = {"Name", "Address & Postcode", "Service"};
-
-        pdfTable = new JTable(data, header);
+            }
+        });
+        addBtn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String[] lines = PdfProcessor.INSTANCE.stripLines("C:\\Users\\Electric Coffee\\Downloads\\order-1958-proof-of-postage.pdf");
+                for (String line : lines) {
+                    System.out.println(line);
+                }
+            }
+        });
     }
 }

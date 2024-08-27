@@ -44,7 +44,7 @@
         <properties/>
         <border type="none"/>
         <children>
-          <component id="3ac8" class="javax.swing.JTable" binding="pdfTable" custom-create="true">
+          <component id="3ac8" class="javax.swing.JTable" binding="pdfTable">
             <constraints/>
             <properties/>
           </component>
