@@ -1,9 +1,6 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
-import java.io.FileFilter;
 import java.util.Vector;
 
 public class PdfProcessorWindow extends JFrame {
@@ -26,6 +23,16 @@ public class PdfProcessorWindow extends JFrame {
 
         /* Export */
         exportBtn.addActionListener(e -> {
+            int rowCount = pdfTable.getRowCount();
+
+            Vector<UserData> userData = new Vector<>();
+
+            for (int i = 0; i < rowCount; i++) {
+                String name = (String) dtm.getValueAt(i, 0);
+                String addr = (String) dtm.getValueAt(i, 1);
+                String serv = (String) dtm.getValueAt(i, 2);
+                userData.add(new UserData(name, addr, serv));
+            }
 
         });
 

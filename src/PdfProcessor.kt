@@ -2,61 +2,14 @@ import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.text.PDFTextStripper
 import java.io.File
 import java.io.IOException
-import java.nio.file.FileSystems
-import java.nio.file.Paths
-import java.nio.file.StandardWatchEventKinds
 import java.text.SimpleDateFormat
 import java.util.*
 
+enum class FetchMode {
+    None, Name, Address, Service
+}
+
 object PdfProcessor {
-    /**
-     * Opening class to setup File Watcher
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    @Throws(IOException::class, InterruptedException::class)
-    fun run(watchDir: String?, viewerExec: String?) {
-        // Get string from args if set
-
-        val watchDir = watchDir ?: "E:\\Downloads"
-        val viewerExec = viewerExec ?: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-
-        // Create watch service to monitor download folder
-        val watchService = FileSystems.getDefault().newWatchService()
-
-        // Set download folder e:downloads, this may need to be changed
-        val path = Paths.get(watchDir)
-
-        path.register(
-            watchService,
-            StandardWatchEventKinds.ENTRY_CREATE,
-            StandardWatchEventKinds.ENTRY_MODIFY,
-            StandardWatchEventKinds.ENTRY_DELETE
-        )
-
-        println("Monitoring download folder [$watchDir] for pdfs")
-
-        var poll = true
-        while (poll) {
-            val key = watchService.take()
-
-            for (event in key.pollEvents()) {
-                if (event.kind() !== StandardWatchEventKinds.ENTRY_CREATE || !event.context().toString()
-                        .endsWith(".pdf")
-                ) {
-                    println("Ignoring event kind : ${ event.kind() } - File : ${ event.context() }")
-                    break
-                }
-
-                println("Processing event kind : ${event.kind()} - File : ${event.context()}")
-
-                //bingo we have a pdf try and process it
-                processPDF("$watchDir\\${event.context()}", viewerExec)
-            }
-            poll = key.reset()
-        }
-    }
-
     /**
      * Opens a PDF and strips out the individual lines of text
      */
@@ -67,10 +20,6 @@ object PdfProcessor {
 
         //will loop though the text hoping to find the text 'Postage Paid GB'
         return text.split("\r\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-    }
-
-    enum class FetchMode {
-        None, Name, Address, Service
     }
 
     /**
@@ -86,20 +35,25 @@ object PdfProcessor {
         var addressBuffer = Vector<String>()
         val services = Vector<String>()
 
+        // sketchy state machine time, woo!
         for (line in lines) {
             if (line.contains("Certificate of Posting for Online Postage")) {
                 isCert = true
             }
 
+            // ignore everything unless we've hit the Certificate of Posting for Online Postage line
             if (!isCert) {
                 continue;
             }
 
+            // If the state machine is in the default state and it sees "Name & Address",
+            // we know the next line will be the name
             if (fetchMode == FetchMode.None && line.contains("Name & Address")) {
                 fetchMode = FetchMode.Name
                 continue
             }
 
+            // After the name has been read, the address comes next
             if (fetchMode == FetchMode.Name) {
                 println("Processing [$line]")
                 names.add(line)
@@ -107,17 +61,22 @@ object PdfProcessor {
                 continue
             }
 
+            // If we're in address mode and the line read is "Service Used" we know the address part is over
+            // NOTE: this breaks if for some reason someone has "Service Used" in their address...
             if (fetchMode == FetchMode.Address && line.contains("Service Used")) {
                 fetchMode = FetchMode.Service
                 continue
             }
 
+            // If the line wasn't "Service Used", then we copy that line to the address buffer
             if (fetchMode == FetchMode.Address) {
                 // do stuff
                 addressBuffer.add(line)
                 continue
             }
 
+            // The service is just one line of text (I assume),
+            // so it should be safe to return the state machine to the default state
             if (fetchMode == FetchMode.Service) {
                 addresses.add(addressBuffer.joinToString(", "))
                 addressBuffer = Vector()
