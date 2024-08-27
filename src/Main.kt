@@ -1,5 +1,7 @@
-fun main() {
-    val w = Window()
+import javax.swing.JFrame
 
-    w.isVisible = true
+fun main() {
+    val window = PdfProcessorWindow()
+
+    window.isVisible = true
 }
