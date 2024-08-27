@@ -2,6 +2,9 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.FileFilter;
+import java.util.Vector;
 
 public class PdfProcessorWindow extends JFrame {
     private JButton removeBtn;
@@ -21,25 +24,42 @@ public class PdfProcessorWindow extends JFrame {
         DefaultTableModel dtm = new DefaultTableModel(null, new Object[]{"Name", "Address & Postcode", "Service"});
         pdfTable.setModel(dtm);
 
-        exportBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        /* Export */
+        exportBtn.addActionListener(e -> {
 
+        });
+
+        /* Remove */
+        removeBtn.addActionListener(e -> {
+            int[] rows = pdfTable.getSelectedRows();
+
+            // iterate in reverse to delete due to a quirk in Swing.
+            for (int i = rows.length - 1; i >= 0; i--) {
+                dtm.removeRow(rows[i]);
             }
         });
-        removeBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
 
+        /* Add */
+        addBtn.addActionListener(e -> {
+            PdfFileChooser chooser = new PdfFileChooser();
+            int dialogResult = chooser.showOpenDialog(this);
+
+            if (dialogResult != JFileChooser.APPROVE_OPTION) {
+                return;
             }
-        });
-        addBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String[] lines = PdfProcessor.INSTANCE.stripLines("C:\\Users\\Electric Coffee\\Downloads\\order-1958-proof-of-postage.pdf");
-                for (String line : lines) {
-                    System.out.println(line);
-                }
+
+            File selectedFile = chooser.getSelectedFile();
+            String path = selectedFile.getPath();
+
+            System.out.println(path);
+
+            String[] lines = PdfProcessor.INSTANCE.stripLines(path);
+            Vector<UserData> result = PdfProcessor.INSTANCE.genOutput(lines);
+
+//            DefaultTableModel model = (DefaultTableModel) pdfTable.getModel();
+
+            for (UserData datum : result) {
+                dtm.addRow(datum.toArray());
             }
         });
     }
