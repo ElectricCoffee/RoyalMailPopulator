@@ -17,6 +17,7 @@ public class PdfProcessorWindow extends JFrame {
     private JTable pdfTable;
     private JPanel MainPanel;
     private JScrollPane scrollPane;
+    private JLabel label;
 
     public PdfProcessorWindow() {
         super("Royal Mail PDF Processor");
@@ -41,7 +42,11 @@ public class PdfProcessorWindow extends JFrame {
                 String serv = (String) dtm.getValueAt(i, 2);
                 userData.add(new UserData(name, addr, serv));
             }
+            if (userData.isEmpty()) {
+                return;
+            }
 
+            PdfProcessor.INSTANCE.processPDF(userData, "C:\\Users\\Electric Coffee");
         });
 
         /* Remove */
@@ -70,8 +75,10 @@ public class PdfProcessorWindow extends JFrame {
         });
 
         dtm.addTableModelListener(e -> {
-            System.out.printf("pdf table updated, row count %d\n", dtm.getRowCount());
-            exportBtn.setEnabled(dtm.getRowCount() > 0);
+            int rowCount = dtm.getRowCount();
+            System.out.printf("pdf table updated, row count %d\n", rowCount);
+            exportBtn.setEnabled(rowCount > 0);
+            label.setText(rowCount + " Items Loaded");
         });
 
         new DropTarget(this, new DropTargetListener() {
