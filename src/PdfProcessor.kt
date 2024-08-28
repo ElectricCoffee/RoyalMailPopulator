@@ -104,7 +104,7 @@ object PdfProcessor {
      * populate the boxes with the text stripped from the shipping labels.
      * @param filename is the file that it will attempt to process
      */
-    fun processPDF(userData: Vector<UserData>, outputDestination: String) {
+    fun processPdf(userData: Vector<UserData>, outputDestination: String) {
         // output file is empty to will end early as there is nothing to add to proof of postage
         if (userData.isEmpty()) {
             println("Output file is empty, exiting early")
@@ -150,7 +150,7 @@ object PdfProcessor {
             acroForm.getField("Text57").setValue("$countForNumberOfItems items")
             acroForm.getField("Text58").setValue(SimpleDateFormat("dd/MM/yyyy").format(Date()))
 
-            val fileName = SimpleDateFormat("yyyy-MM-dd").format(Date()) + "-bulk-order-form-${p + 1}.pdf"
+            val fileName = SimpleDateFormat("yyyy-MM-dd-hh-mm-ss").format(Date()) + "-bulk-order-form-${p + 1}.pdf"
             val path = outputDestination + File.separator + fileName
             pdfTemplate.save(path)
             pdfTemplate.close()
