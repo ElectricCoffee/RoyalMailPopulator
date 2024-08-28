@@ -103,7 +103,8 @@ object PdfProcessor {
      * Uses pdfBox to open a Royal Mail PDF and extract text from the shipping label.
      * Once this is done it will then open the Royal Mail proof of postage pdf and
      * populate the boxes with the text stripped from the shipping labels.
-     * @param filename is the file that it will attempt to process
+     * @param userData contains all the data from the list
+     * @param outputDestination is the folder all will be saved to
      */
     fun processPdf(userData: Vector<UserData>, outputDestination: String) {
         // output file is empty to will end early as there is nothing to add to proof of postage
