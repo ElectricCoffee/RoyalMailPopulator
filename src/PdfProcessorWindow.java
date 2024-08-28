@@ -101,12 +101,20 @@ public class PdfProcessorWindow extends JFrame {
                                 String filePath = file.getAbsolutePath();
                                 populateTableFromPath(filePath, dtm);
                             } else {
-                                JOptionPane.showMessageDialog(null, "Only PDF files are accepted.");
+                                JOptionPane.showMessageDialog(
+                                        null,
+                                        "Only PDF files are accepted.",
+                                        "Incorrect file type",
+                                        JOptionPane.INFORMATION_MESSAGE);
                             }
                         }
                     }
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(null, ex.getMessage(), ex.getClass().getCanonicalName(), JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(
+                            null,
+                            ex.getMessage(),
+                            ex.getClass().getCanonicalName(),
+                            JOptionPane.ERROR_MESSAGE);
                 } finally {
                     dtde.dropComplete(true);
                 }
