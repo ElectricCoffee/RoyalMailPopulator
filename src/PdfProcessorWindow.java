@@ -68,7 +68,11 @@ public class PdfProcessorWindow extends JFrame {
             }
         });
 
-        /* Remove */
+        /*
+         * Remove Button Listener
+         *
+         * Removes the selected items.
+         * */
         removeBtn.addActionListener(e -> {
             int[] rows = pdfTable.getSelectedRows();
 
@@ -78,7 +82,12 @@ public class PdfProcessorWindow extends JFrame {
             }
         });
 
-        /* Add */
+        /*
+         * Add Button Listener
+         *
+         * Opens a dialogue window which lets you select a pdf for import.
+         * If the pdf contains anything usable, it will populate the table with the data.
+         * */
         addBtn.addActionListener(e -> {
             PdfFileChooser chooser = new PdfFileChooser();
             int dialogResult = chooser.showOpenDialog(this);
@@ -93,6 +102,7 @@ public class PdfProcessorWindow extends JFrame {
             populateTableFromPath(path, dtm);
         });
 
+        /* Listens for Table Changes */
         dtm.addTableModelListener(e -> {
             int rowCount = dtm.getRowCount();
             System.out.printf("pdf table updated, row count %d\n", rowCount);
@@ -100,6 +110,7 @@ public class PdfProcessorWindow extends JFrame {
             label.setText(rowCount + " Items Loaded");
         });
 
+        /* Listens for drag-and-drop events */
         new DropTarget(this, new DropTargetListener() {
             @Override public void dragEnter(DropTargetDragEvent dtde) {}
 
@@ -148,6 +159,11 @@ public class PdfProcessorWindow extends JFrame {
         });
     }
 
+    /**
+     * Populates the table with data loaded from the certificate
+     * @param path The path to the input pdf
+     * @param dtm The table to be populated
+     */
     void populateTableFromPath(String path, DefaultTableModel dtm) {
         System.out.println(path);
 

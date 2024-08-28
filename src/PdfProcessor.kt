@@ -15,8 +15,9 @@ object PdfProcessor {
      */
     fun stripLines(fileName: String): Array<String> {
         // using openPdf will load the pdf that is hopefully a Royal Mail shipping label.
-        val docLoad = PDDocument.load(File(fileName))
-        val text = PDFTextStripper().getText(docLoad)
+        val text = PDDocument.load(File(fileName)).use {
+            PDFTextStripper().getText(it)
+        }
 
         //will loop though the text hoping to find the text 'Postage Paid GB'
         return text.split("\r\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
@@ -115,8 +116,10 @@ object PdfProcessor {
 
         while (p <= userData.size - 1) {
             // Load Royal Mail proof of postage pdf ready to repopulate!
-            val file = File("resources/Royal-Mail-Bulk-Certificate-Posting-Standard.pdf")
-            val pdfTemplate = PDDocument.load(file)
+            val formStream = javaClass.getResourceAsStream("resources/Royal-Mail-Bulk-Certificate-Posting-Standard.pdf")
+                ?: throw IOException("Could not locate the bulk order form. Did you build correctly?")
+
+            val pdfTemplate = PDDocument.load(formStream)
             val docCatalog = pdfTemplate.documentCatalog
             val acroForm = docCatalog.acroForm
 
