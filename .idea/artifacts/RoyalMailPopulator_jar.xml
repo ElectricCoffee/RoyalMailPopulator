@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="RoyalMailPopulator:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/RoyalMailPopulator_jar</output-path>
+    <root id="archive" name="RoyalMailPopulator.jar">
+      <element id="module-output" name="RoyalMailPopulator" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/pdfbox-2.0.27.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/fontbox-2.0.27.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-logging-1.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib/2.0.0/kotlin-stdlib-2.0.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/jetbrains/annotations/13.0/annotations-13.0.jar" path-in-jar="/" />
+      <element id="file-copy" path="$PROJECT_DIR$/resources/Royal-Mail-Bulk-Certificate-Posting-Standard.pdf" />
+    </root>
+  </artifact>
+</component>
