@@ -1,9 +1,13 @@
 import javax.swing.*;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.dnd.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.util.List;
 import java.util.Vector;
 
 public class PdfProcessorWindow extends JFrame {
@@ -62,19 +66,71 @@ public class PdfProcessorWindow extends JFrame {
             File selectedFile = chooser.getSelectedFile();
             String path = selectedFile.getPath();
 
-            System.out.println(path);
-
-            String[] lines = PdfProcessor.INSTANCE.stripLines(path);
-            Vector<UserData> result = PdfProcessor.INSTANCE.genOutput(lines);
-
-            for (UserData datum : result) {
-                dtm.addRow(datum.toArray());
-            }
+            populateTableFromPath(path, dtm);
         });
 
         dtm.addTableModelListener(e -> {
             System.out.printf("pdf table updated, row count %d\n", dtm.getRowCount());
             exportBtn.setEnabled(dtm.getRowCount() > 0);
         });
+
+        new DropTarget(this, new DropTargetListener() {
+            @Override public void dragEnter(DropTargetDragEvent dtde) {}
+
+            @Override public void dragOver(DropTargetDragEvent dtde) {}
+
+            @Override public void dropActionChanged(DropTargetDragEvent dtde) {}
+
+            @Override public void dragExit(DropTargetEvent dte) {}
+
+            @Override
+            public void drop(DropTargetDropEvent dtde) {
+                dtde.acceptDrop(DnDConstants.ACTION_COPY);
+
+                try {
+                    // Retrieve the dropped data
+                    Transferable transferable = dtde.getTransferable();
+                    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                        // Get the list of files dropped
+                        List<File> droppedFiles = (List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
+
+                        for (File file : droppedFiles) {
+                            // Only process PDF files
+                            if (file.getName().toLowerCase().endsWith(".pdf")) {
+                                // Get the file path and use it
+                                String filePath = file.getAbsolutePath();
+                                populateTableFromPath(filePath, dtm);
+                            } else {
+                                JOptionPane.showMessageDialog(null, "Only PDF files are accepted.");
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(null, ex.getMessage(), ex.getClass().getCanonicalName(), JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    dtde.dropComplete(true);
+                }
+            }
+        });
+    }
+
+    void populateTableFromPath(String path, DefaultTableModel dtm) {
+        System.out.println(path);
+
+        String[] lines = PdfProcessor.INSTANCE.stripLines(path);
+        Vector<UserData> result = PdfProcessor.INSTANCE.genOutput(lines);
+
+        for (UserData datum : result) {
+            dtm.addRow(datum.toArray());
+        }
+
+        if (dtm.getRowCount() < 1) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Did not find any address information.\n" +
+                            "Are you sure you got the right file?",
+                    "Data Error",
+                    JOptionPane.WARNING_MESSAGE);
+        }
     }
 }
