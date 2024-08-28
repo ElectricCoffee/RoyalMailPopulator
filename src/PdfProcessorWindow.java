@@ -1,5 +1,8 @@
 import javax.swing.*;
+import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.Vector;
 
@@ -17,6 +20,7 @@ public class PdfProcessorWindow extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(600, 400);
         setLocationRelativeTo(null);
+        exportBtn.setEnabled(false); // initially this has to be disabled until the listener re-enables it
 
         DefaultTableModel dtm = new DefaultTableModel(null, new Object[]{"Name", "Address & Postcode", "Service"});
         pdfTable.setModel(dtm);
@@ -63,11 +67,14 @@ public class PdfProcessorWindow extends JFrame {
             String[] lines = PdfProcessor.INSTANCE.stripLines(path);
             Vector<UserData> result = PdfProcessor.INSTANCE.genOutput(lines);
 
-//            DefaultTableModel model = (DefaultTableModel) pdfTable.getModel();
-
             for (UserData datum : result) {
                 dtm.addRow(datum.toArray());
             }
+        });
+
+        dtm.addTableModelListener(e -> {
+            System.out.printf("pdf table updated, row count %d\n", dtm.getRowCount());
+            exportBtn.setEnabled(dtm.getRowCount() > 0);
         });
     }
 }

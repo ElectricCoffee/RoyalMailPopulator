@@ -31,6 +31,9 @@
         <properties>
           <text value="Export"/>
         </properties>
+        <clientProperties>
+          <html.disable class="java.lang.Boolean" value="false"/>
+        </clientProperties>
       </component>
       <hspacer id="b3a5a">
         <constraints>
