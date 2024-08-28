@@ -1,11 +1,8 @@
 import javax.swing.*;
-import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.dnd.*;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.List;
 import java.util.Vector;
@@ -46,7 +43,29 @@ public class PdfProcessorWindow extends JFrame {
                 return;
             }
 
-            PdfProcessor.INSTANCE.processPDF(userData, "C:\\Users\\Electric Coffee");
+            DirChooser dc = new DirChooser();
+
+            if (dc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+
+            File selectedDir = dc.getSelectedFile();
+            String path = selectedDir.getPath();
+
+            try {
+                PdfProcessor.INSTANCE.processPdf(userData, path);
+                // delete all rows after saving the pdf
+                for (int i = rowCount - 1; i >= 0; i--) {
+                    dtm.removeRow(i);
+                }
+                label.setText("Document saved to " + path);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(
+                        null,
+                        ex.getMessage(),
+                        ex.getClass().getCanonicalName(),
+                        JOptionPane.ERROR_MESSAGE);
+            }
         });
 
         /* Remove */
