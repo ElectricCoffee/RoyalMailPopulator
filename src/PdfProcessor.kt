@@ -87,7 +87,7 @@ object PdfProcessor {
             }
         }
 
-        if (names.count() != addresses.count() || addresses.count() != services.count()) {
+        if (names.size != addresses.size || addresses.size != services.size) {
             throw IOException("The fields aren't the same length...")
         }
 
@@ -103,80 +103,58 @@ object PdfProcessor {
      * Once this is done it will then open the Royal Mail proof of postage pdf and
      * populate the boxes with the text stripped from the shipping labels.
      * @param filename is the file that it will attempt to process
-     * @param viewerExec is the location of the pdf viewer
      */
-    fun processPDF(filename: String, viewerExec: String) {
-        try {
-            println("Attempting to process $filename")
-            println("Working folder ${System.getProperty("user.dir")}")
+    fun processPDF(userData: Vector<UserData>, outputDestination: String) {
+        // output file is empty to will end early as there is nothing to add to proof of postage
+        if (userData.isEmpty()) {
+            println("Output file is empty, exiting early")
+            return
+        }
 
-            val lines = stripLines(filename)
-            val output = genOutput(lines)
+        var p = 0
 
-            // output file is empty to will end early as there is nothing to add to proof of postage
-            if (output.isEmpty()) {
-                println("Output file is empty, exiting early")
-                return
-            }
+        while (p <= userData.size - 1) {
+            // Load Royal Mail proof of postage pdf ready to repopulate!
+            val file = File("resources/Royal-Mail-Bulk-Certificate-Posting-Standard.pdf")
+            val pdfTemplate = PDDocument.load(file)
+            val docCatalog = pdfTemplate.documentCatalog
+            val acroForm = docCatalog.acroForm
 
-            // Will now attempt to add the output file to 1 or more proof of postage
-
-            // If there is over 30 items it will loop thought creating the proof of
-            // postage pdf a number of times as it will only hold 30 items
-            val outputs = output.map { it.toLegacyString() }
-            var p = 0
-
-            while (p <= outputs.size - 1) {
-                // Load Royal Mail proof of postage pdf ready to repopulate!
-                val file = File(System.getProperty("user.dir") + "\\Royal Mail Proof Of Postage.pdf")
-                val pdfTemplate = PDDocument.load(file)
-                val docCatalog = pdfTemplate.documentCatalog
-                val acroForm = docCatalog.acroForm
-
-                // populate the forms from the pdf text stored in the outputs string array
-                var countForNumberOfItems = 0
-                for (i in p..<outputs.size) {
-                    if (i > p + 29) {
-                        println("Over 30 items exiting early!")
-                        break
-                    }
-
-                    val (name, address, service) = outputs[i].split("¬".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-
-                    acroForm.run {
-                        if ((i - p) == 0) {
-                            getField("1").setValue(name)
-                            getField("my text here").setValue(address)
-                            getField("service used 1").setValue(service)
-                        } else {
-                            getField("" + ((i - p) + 1)).setValue(name)
-                            getField("address and postcode " + ((i - p) + 1)).setValue(address)
-                            getField("service used " + ((i - p) + 1)).setValue(service)
-                        }
-                    }
-
-                    println("Content added [$name,$address,$service]")
-                    countForNumberOfItems++
+            // populate the forms from the pdf text stored in the outputs string array
+            var countForNumberOfItems = 0
+            for (i in p..<userData.size) {
+                if (i > p + 29) {
+                    println("Over 30 items exiting early!")
+                    break
                 }
 
-                // add date and number of items
-                acroForm.getField("Text57").setValue("$countForNumberOfItems items")
-                acroForm.getField("Text58").setValue(SimpleDateFormat("dd/MM/yyyy").format(Date()))
+                val (name, address, service) = userData[i]
 
-                // Save populated pdf file with unique guid filename
-                val uniqueFilename = UUID.randomUUID().toString() + ".pdf"
-                val path = "${System.getProperty("user.dir")}\\$uniqueFilename"
-                pdfTemplate.save(path)
-                pdfTemplate.close()
+                acroForm.run {
+                    if ((i - p) == 0) {
+                        getField("1").setValue(name)
+                        getField("my text here").setValue(address)
+                        getField("service used 1").setValue(service)
+                    } else {
+                        getField("" + ((i - p) + 1)).setValue(name)
+                        getField("address and postcode " + ((i - p) + 1)).setValue(address)
+                        getField("service used " + ((i - p) + 1)).setValue(service)
+                    }
+                }
 
-                //open file in chrome
-                println("Opening pdf with exec [$viewerExec $path]")
-                Runtime.getRuntime().exec("$viewerExec $path")
-
-                p += 30
+                println("Content added [$name,$address,$service]")
+                countForNumberOfItems++
             }
-        } catch (e: IOException) {
-            e.printStackTrace()
+
+            // add date and number of items
+            acroForm.getField("Text57").setValue("$countForNumberOfItems items")
+            acroForm.getField("Text58").setValue(SimpleDateFormat("dd/MM/yyyy").format(Date()))
+
+            val fileName = SimpleDateFormat("yyyy-MM-dd").format(Date()) + "-bulk-order-form-${p + 1}.pdf"
+            val path = outputDestination + File.separator + fileName
+            pdfTemplate.save(path)
+            pdfTemplate.close()
+            p += 30
         }
     }
 }
