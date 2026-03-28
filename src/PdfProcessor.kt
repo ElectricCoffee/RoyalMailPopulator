@@ -20,7 +20,7 @@ object PdfProcessor {
         }
 
         //will loop though the text hoping to find the text 'Postage Paid GB'
-        return text.split("\r\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+        return text.split(System.lineSeparator().toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
     }
 
     /**
@@ -118,6 +118,7 @@ object PdfProcessor {
         while (p <= userData.size - 1) {
             // Load Royal Mail proof of postage pdf ready to repopulate!
             val formStream = javaClass.getResourceAsStream("resources/Royal-Mail-Bulk-Certificate-Posting-Standard.pdf")
+                ?: javaClass.getResourceAsStream("Royal-Mail-Bulk-Certificate-Posting-Standard.pdf") // covering all bases here
                 ?: throw IOException("Could not locate the bulk order form. Did you build correctly?")
 
             val pdfTemplate = PDDocument.load(formStream)
